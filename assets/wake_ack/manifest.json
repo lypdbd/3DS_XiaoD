@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "sample_rate": 24000,
+  "format": "pcm_s16le",
+  "speaker": "zh_female_qingchezizi_uranus_bigtts",
+  "resource": "seed-tts-2.0",
+  "clips": [
+    {
+      "file": "0.pcm",
+      "text": "\u600e\u4e48\u4e86\uff1f",
+      "bytes": 37438,
+      "sha256": "3774c175074bdee02e1849af0895a79893b5dbe79a1f84244581454659d979d6"
+    },
+    {
+      "file": "1.pcm",
+      "text": "\u55ef\uff1f",
+      "bytes": 28934,
+      "sha256": "8714ccaf91a0caeca4908ad49cc68f5eb00fe34bad606a24586df4776e1967ed"
+    },
+    {
+      "file": "2.pcm",
+      "text": "\u5728\u5462\u3002",
+      "bytes": 37220,
+      "sha256": "a4396e7fb1a3b9f74b0b2a03203a2efae9790a5121fcd4f20878d51910176427"
+    }
+  ]
+}

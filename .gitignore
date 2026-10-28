@@ -1,0 +1,14 @@
+.pio/
+.env
+.env.*
+!.env.example
+platformio.local.ini
+captures/
+__pycache__/
+.vscode/
+*.py[cod]
+*.bin
+*.elf
+*.map
+*.log
+*.zip

@@ -1,0 +1,33 @@
+{
+  "repository": "espressif/esp-sr",
+  "ref": "v1.7.1",
+  "model": "wn9_hilexin",
+  "files": {
+    "LICENSE": "8e206f3bc38f5fa84a4956f2d5030ca17daea0d7",
+    "src/model_path.c": "9e34b6cce3b01a1122a7c71087bd492274acaca5",
+    "src/include/model_path.h": "a9957a30036b02776b2ab591ce1e9806675ab2ee",
+    "include/esp32s3/dl_lib.h": "47e7c86f6eba1cba429e99ecbf2c0e8d73348a27",
+    "include/esp32s3/dl_lib_coefgetter_if.h": "a21de8d93c53bfffbceb485ea1bc68ee46e5237e",
+    "include/esp32s3/dl_lib_conv_queue.h": "7cb9bf915313db2b501e79ff3349970f62a96f6f",
+    "include/esp32s3/dl_lib_convq8_queue.h": "28c5da7952d775f9f52c71ff00d322f1f4f4352b",
+    "include/esp32s3/dl_lib_convq_queue.h": "ff190fe71526690aaffb415f3efc375b5652bfc3",
+    "include/esp32s3/dl_lib_matrix.h": "b5fae740c772855b70aa3f5425008b7c4b61982f",
+    "include/esp32s3/dl_lib_matrixq.h": "8ad397baf4b20330f52a94f21c840bb982416c3f",
+    "include/esp32s3/dl_lib_matrixq8.h": "377df7ccf572a504dfc88f1168476e335db91e92",
+    "include/esp32s3/esp_mn_iface.h": "20f96d8ae55b3705fe0f52928369263fb4afbd23",
+    "include/esp32s3/esp_mn_models.h": "8571648f304c211d4158934d80f0d1e81215b8fd",
+    "include/esp32s3/esp_wn_iface.h": "bbcdcb991e93f8cfccaec65d9941e7accfa2e22d",
+    "include/esp32s3/esp_wn_models.h": "38972e727c4ca1e03e9bacf4db86e98194a9c249",
+    "include/esp32s3/esp_vad.h": "2440d39a79562d26bb45b55a4008e608c63a95e1",
+    "lib/esp32s3/libwakenet.a": "625de128da37e0eef0f176782e3d845dd30af217",
+    "lib/esp32s3/libdl_lib.a": "8315980641df7a445e53684530ce6897feb4b1ef",
+    "lib/esp32s3/libc_speech_features.a": "f09717cb625e74d796d4e6150beed0ef43faaa6c",
+    "lib/esp32s3/libhufzip.a": "dec83b012785398c24a5ea10f4b907d1ef4ea308",
+    "lib/esp32s3/libesp_audio_processor.a": "8fd8b01c0b18cd81c20607367b57af2c469ac70d",
+    "model/pack_model.py": "1fc85aa9ca39573af6f61fc426a07ffbc0125f73",
+    "model/wakenet_model/wn9_hilexin/_MODEL_INFO_": "72ee45b10f9d48b4aebae5772a01668c03df43f6",
+    "model/wakenet_model/wn9_hilexin/wn9_data": "61611cfc76f70520e1c67d2b33dd45c24cfcce6c",
+    "model/wakenet_model/wn9_hilexin/wn9_index": "3845b374a1b96d54d5c1574f6456403ea45f9f81",
+    "test_apps/esp-sr/main/samples/hilexin.h": "135419c925f65ea4e181b09f34a59d6ddf0919af"
+  }
+}
