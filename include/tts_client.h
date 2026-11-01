@@ -11,6 +11,7 @@ inline bool fetchTts(const char* text, uint32_t sampleRate, TtsResponse& respons
         Serial.printf("ERROR TTS %s\n", response.error());
         return false;
     }
+
     std::unique_ptr<cJSON, decltype(&cJSON_Delete)> body(cJSON_CreateObject(), cJSON_Delete);
     cJSON* params = body ? cJSON_AddObjectToObject(body.get(), "req_params") : nullptr;
     cJSON* format = params ? cJSON_AddObjectToObject(params, "audio_params") : nullptr;
@@ -75,4 +76,55 @@ inline bool fetchTts(const char* text, uint32_t sampleRate, TtsResponse& respons
                   static_cast<unsigned>(response.bodyBytes()),
                   static_cast<unsigned>(response.audioSize() / 2 * 1000 / sampleRate));
     return true;
+}
+
+struct TtsPlaybackMetrics {
+    uint32_t firstPlayMs = 0;
+    uint32_t receiveMs = 0;
+    uint32_t totalMs = 0;
+    size_t audioBytes = 0;
+    speaker::StreamStats playback;
+};
+
+inline bool speakTts(const char* text, TtsPlaybackMetrics* metrics = nullptr) {
+    struct Playback {
+        TtsResponse response;
+        speaker::StreamStats stats;
+        std::atomic<bool> done{false};
+        bool played = false;
+    } playback;
+    const uint32_t started = millis();
+    const auto worker = [](void* context) {
+        auto& job = *static_cast<Playback*>(context);
+        job.played = speaker::playStream(job.response, job.stats);
+        if (!job.played) {
+            job.response.cancel();
+        }
+        job.done.store(true, std::memory_order_release);
+        vTaskDelete(nullptr);
+    };
+    if (xTaskCreate(worker, "tts-play", 4096, &playback, 1, nullptr) != pdPASS) {
+        Serial.println("ERROR TTS playback task allocation failed");
+        return false;
+    }
+    const bool received = fetchTts(text, 24000, playback.response);
+    const uint32_t receivedMs = millis() - started;
+    playback.response.closeStream(received);
+    while (!playback.done.load(std::memory_order_acquire)) {
+        delay(1);
+    }
+    TtsPlaybackMetrics measured;
+    measured.firstPlayMs = playback.stats.firstWriteMs ? playback.stats.firstWriteMs - started : 0;
+    measured.receiveMs = receivedMs;
+    measured.totalMs = millis() - started;
+    measured.audioBytes = playback.response.audioSize();
+    measured.playback = playback.stats;
+    if (metrics) {
+        *metrics = measured;
+    }
+    Serial.printf("TTS_STREAM first_play_ms=%u receive_ms=%u total_ms=%u played_bytes=%u "
+                  "audio_bytes=%u underruns=%u\n",
+                  measured.firstPlayMs, receivedMs, measured.totalMs, static_cast<unsigned>(playback.stats.playedBytes),
+                  static_cast<unsigned>(playback.response.audioSize()), playback.stats.underruns);
+    return received && playback.played;
 }

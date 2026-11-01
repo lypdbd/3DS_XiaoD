@@ -35,12 +35,15 @@ inline bool ttsSelftest() {
                 offset += count;
             }
             const bool valid = response.finish();
+            response.closeStream(valid);
             const bool bytesOk = !valid || (response.audioSize() >= 2 &&
                                             response.audio()[0] == 1 && response.audio()[1] == 0);
             const bool metricsOk = !valid || (response.bodyBytes() == length &&
                 response.firstBodyMs() <= response.firstAudioMs() &&
                 response.firstAudioMs() <= response.lastAudioMs());
-            const bool ok = valid == test.valid && bytesOk && metricsOk;
+            const bool streamOk = response.complete() && response.failed() == !valid &&
+                response.publishedBytes() == (response.audioSize() & ~size_t(1));
+            const bool ok = valid == test.valid && bytesOk && metricsOk && streamOk;
             passed += ok;
             Serial.printf("TTS_PARSER %s chunk=%u %s\n", test.name, static_cast<unsigned>(chunk),
                           ok ? "PASS" : "FAIL");

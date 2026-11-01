@@ -5,9 +5,11 @@
 #include <mbedtls/base64.h>
 #include <memory>
 #include <cstring>
+#include <atomic>
+#include <audio_output.h>
 
 // HTTPClient removes HTTP chunk framing before writing to this NDJSON sink.
-class TtsResponse : public Stream {
+class TtsResponse : public Stream, public speaker::PcmSource {
 public:
     static constexpr size_t kLineCapacity = 128 * 1024;
     static constexpr size_t kAudioCapacity = 24000 * 2 * 30;
@@ -23,6 +25,10 @@ public:
     size_t write(uint8_t value) override { return write(&value, 1); }
     size_t write(const uint8_t* data, size_t size) override {
         CpuTimer timer(processingUs_);
+        if (failed() && !error_) {
+            reject("stream aborted");
+            return 0;
+        }
         if (error_ || !line_ || !audio_) {
             return 0;
         }
@@ -57,6 +63,9 @@ public:
 
     bool finish() {
         CpuTimer timer(processingUs_);
+        if (failed() && !error_) {
+            return reject("stream playback failed");
+        }
         if (error_ || (lineSize_ && !consumeLine())) {
             return false;
         }
@@ -70,6 +79,16 @@ public:
     }
 
     const uint8_t* audio() const { return audio_.get(); }
+    size_t publishedBytes() const override { return published_.load(std::memory_order_acquire); }
+    bool complete() const override { return complete_.load(std::memory_order_acquire); }
+    bool failed() const override { return failed_.load(std::memory_order_acquire); }
+    void cancel() { failed_.store(true, std::memory_order_release); }
+    void closeStream(bool success) {
+        if (!success) {
+            failed_.store(true, std::memory_order_release);
+        }
+        complete_.store(true, std::memory_order_release);
+    }
     size_t audioSize() const { return audioSize_; }
     size_t chunks() const { return chunks_; }
     size_t bodyBytes() const { return bodyBytes_; }
@@ -114,9 +133,13 @@ private:
     uint32_t processingUs_ = 0;
     uint32_t decodingUs_ = 0;
     uint32_t base64Us_ = 0;
+    std::atomic<size_t> published_{0};
+    std::atomic<bool> complete_{false};
+    std::atomic<bool> failed_{false};
 
     bool reject(const char* message) {
         error_ = message;
+        failed_.store(true, std::memory_order_release);
         return false;
     }
 
@@ -166,6 +189,8 @@ private:
                 return reject("invalid Base64 audio");
             }
             audioSize_ += bytes;
+            // Publish only complete PCM samples; the buffer is append-only and never moves.
+            published_.store(audioSize_ & ~size_t(1), std::memory_order_release);
             const uint32_t now = millis() - started_;
             if (!chunks_) {
                 firstAudioMs_ = now;

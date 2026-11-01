@@ -44,7 +44,7 @@ const char* name(State value) {
         case State::Stt: return "STT";
         case State::Camera: return "CAMERA";
         case State::Llm: return "LLM";
-        case State::Tts: return "TTS";
+        case State::Tts: return "TTS_STREAM";
         case State::Playing: return "PLAYING";
         case State::Error: return "ERROR";
         case State::Paused: return "PAUSED";
@@ -186,14 +186,8 @@ bool answerQuestion(cloud::Text question) {
     {
         phase(State::Tts);
         cloud::printSafe("ASSISTANT", reply.get());
-        TtsResponse audio;
-        if (!fetchTts(reply.get(), 24000, audio)) {
-            fail("TTS rejected or incomplete; no playback");
-            return false;
-        }
-        phase(State::Playing);
-        if (!speaker::playPcm(audio.audio(), audio.audioSize())) {
-            fail("speaker playback failed");
+        if (!speakTts(reply.get())) {
+            fail("TTS/playback failed; partial audio possible, history unchanged");
             return false;
         }
         playbackEnded = millis();

@@ -108,6 +108,95 @@ bool output(Driver& driver, const uint8_t* audio, size_t frames, uint32_t rate) 
 }
 }  // namespace
 
+bool playStream(const PcmSource& source, StreamStats& stats) {
+    constexpr size_t prebuffer = 24000 * 2;
+    constexpr size_t fadeFrames = 240;
+    Driver driver;
+    size_t offset = 0;
+    unsigned peak = 0;
+    bool started = false;
+    bool ok = true;
+    uint32_t waiting = millis();
+    int16_t stereo[kBlockFrames * 2];
+    while (true) {
+        if (source.failed()) {
+            Serial.println("ERROR streaming playback aborted by TTS failure; partial audio possible");
+            ok = false;
+            break;
+        }
+        // Read completion first so a completed source exposes its final published size.
+        const bool complete = source.complete();
+        const size_t available = source.publishedBytes();
+        if (complete && offset == available) {
+            break;
+        }
+        const size_t playable = complete ? available : (available > fadeFrames * 2 ? available - fadeFrames * 2 : 0);
+        if ((!started && !complete && available < prebuffer) ||
+            playable <= offset || (!complete && playable - offset < kBlockFrames * 2)) {
+            if (started && millis() - waiting > 100) {
+                ++stats.underruns;
+                Serial.println("ERROR streaming PCM underrun; stopping instead of skipping samples");
+                ok = false;
+                break;
+            }
+            delay(1);
+            continue;
+        }
+        if (!started) {
+            if (!source.audio() || (available >= 4 &&
+                (!memcmp(source.audio(), "RIFF", 4) || !memcmp(source.audio(), "ID3", 3)))) {
+                Serial.println("ERROR streaming speaker expects raw PCM16");
+                ok = false;
+                break;
+            }
+            if (!driver.begin(24000) || !driver.silence()) {
+                ok = false;
+                break;
+            }
+            digitalWrite(44, HIGH);
+            delay(10);
+            started = true;
+            stats.firstWriteMs = millis();
+            Serial.printf("STREAM_PLAY_START ms=%u buffered_ms=%u volume=%d%%\n",
+                          stats.firstWriteMs, static_cast<unsigned>(available / 48), kVolumePercent);
+        }
+        const size_t frames = std::min(kBlockFrames, (playable - offset) / 2);
+        for (size_t i = 0; i < frames; ++i) {
+            int16_t raw;
+            memcpy(&raw, source.audio() + offset + i * 2, 2);
+            peak = std::max(peak, static_cast<unsigned>(abs(static_cast<int>(raw))));
+            int32_t sample = static_cast<int32_t>(raw) * kVolumePercent / 100;
+            size_t edge = offset / 2 + i;
+            if (complete) {
+                edge = std::min(edge, available / 2 - (offset / 2 + i) - 1);
+            }
+            if (edge < fadeFrames) {
+                sample = sample * static_cast<int32_t>(edge) / static_cast<int32_t>(fadeFrames);
+            }
+            stereo[i * 2] = stereo[i * 2 + 1] = static_cast<int16_t>(sample);
+        }
+        if (!driver.write(stereo, frames)) {
+            ok = false;
+            break;
+        }
+        offset += frames * 2;
+        waiting = millis();
+    }
+    stats.playedBytes = offset;
+    if (!started || !peak) {
+        Serial.println("ERROR streaming PCM is empty or silent");
+        ok = false;
+    }
+    if (ok) {
+        ok = driver.silence();
+    }
+    const bool closed = driver.close();
+    Serial.printf("STREAM_PLAY_END result=%s bytes=%u underruns=%u AMP=%d I2S_RELEASED=%d\n",
+                  ok && closed ? "PASS" : "FAIL", static_cast<unsigned>(offset),
+                  stats.underruns, digitalRead(44), closed);
+    return ok && closed;
+}
+
 bool playPcm(const uint8_t* audio, size_t bytes, uint32_t sampleRate) {
     digitalWrite(44, LOW);
     if (!audio || !bytes || bytes % 2 || sampleRate != 24000 ||
